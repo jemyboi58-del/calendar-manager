@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AutoCal</title>
+  <style>
+    /* ── Theme variables ── */
+    :root {
+      --bg: #f5f5f7; --card: #fff; --accent: #0071e3; --accent-h: #0077ed;
+      --text: #1d1d1f; --muted: #6e6e73; --border: #d2d2d7;
+      --green: #30d158; --yellow: #ff9f0a; --red: #ff453a;
+      --r: 14px; --shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    [data-theme="dark"] {
+      --bg: #1c1c1e; --card: #2c2c2e; --accent: #0a84ff; --accent-h: #409cff;
+      --text: #f2f2f7; --muted: #98989f; --border: #3a3a3c;
+      --green: #30d158; --yellow: #ffd60a; --red: #ff453a;
+      --shadow: 0 2px 12px rgba(0,0,0,.3);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; transition: background .2s, color .2s; }
+
+    /* ── Header ── */
+    header {
+      background: rgba(255,255,255,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    [data-theme="dark"] header { background: rgba(28,28,30,0.85); }
+    .header-left { display: flex; align-items: center; gap: 10px; }
+    header h1 { font-size: 18px; font-weight: 700; letter-spacing: -.3px; }
+    .header-right { display: flex; align-items: center; gap: 8px; }
+    .icon-btn { background: none; border: none; cursor: pointer; font-size: 20px; padding: 4px 8px; border-radius: 8px; transition: background .15s; color: var(--text); }
+    .icon-btn:hover { background: var(--border); }
+
+    /* ── Layout ── */
+    .main { max-width: 800px; margin: 0 auto; padding: 20px 16px 40px; }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border-radius: var(--r); border: 1px solid var(--border); padding: 18px 20px; margin-bottom: 14px; box-shadow: var(--shadow); }
+    .card-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: 14px; }
+
+    /* ── Status ── */
+    .status-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+    .status-item { display: flex; align-items: center; gap: 10px; padding: 11px 14px; border-radius: 10px; background: var(--bg); }
+    .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; transition: background .3s; }
+    .dot-green { background: var(--green); box-shadow: 0 0 0 3px rgba(48,209,88,.2); }
+    .dot-red   { background: var(--red);   box-shadow: 0 0 0 3px rgba(255,69,58,.2); }
+    .dot-yellow{ background: var(--yellow);}
+    .status-label { font-size: 14px; font-weight: 600; }
+    .status-sub { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 9px 17px; border-radius: 9px; border: none;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: opacity .15s, background .15s, transform .1s; text-decoration: none;
+      font-family: inherit;
+    }
+    .btn:active { transform: scale(.97); }
+    .btn:disabled { opacity: .45; cursor: not-allowed; }
+    .btn-primary  { background: var(--accent); color: #fff; }
+    .btn-primary:not(:disabled):hover { background: var(--accent-h); }
+    .btn-secondary{ background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-green    { background: var(--green); color: #fff; }
+    .btn-green:not(:disabled):hover { opacity: .85; }
+    .btn-ghost    { background: transparent; color: var(--muted); border: 1px solid var(--border); }
+    .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+    .btn-sm { padding: 6px 12px; font-size: 13px; }
+
+    /* ── Scan controls ── */
+    .scan-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    select {
+      padding: 9px 12px; border-radius: 9px; border: 1px solid var(--border);
+      background: var(--bg); font-size: 14px; color: var(--text); cursor: pointer;
+      outline: none; font-family: inherit; transition: border .15s;
+    }
+    select:focus { border-color: var(--accent); }
+
+    /* Auto-scan toggle */
+    .autoscan-row { display: flex; align-items: center; gap: 10px; margin-top: 12px; flex-wrap: wrap; }
+    .toggle-wrap { display: flex; align-items: center; gap: 8px; }
+    .toggle { position: relative; width: 44px; height: 26px; }
+    .toggle input { opacity: 0; width: 0; height: 0; }
+    .toggle-slider { position: absolute; inset: 0; background: var(--border); border-radius: 26px; cursor: pointer; transition: .2s; }
+    .toggle-slider:before { content:''; position: absolute; width: 20px; height: 20px; left: 3px; bottom: 3px; background: #fff; border-radius: 50%; transition: .2s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+    input:checked + .toggle-slider { background: var(--green); }
+    input:checked + .toggle-slider:before { transform: translateX(18px); }
+    .toggle-label { font-size: 14px; font-weight: 500; }
+    .autoscan-status { font-size: 12px; color: var(--muted); }
+
+    /* Calendar picker */
+    .cal-picker { display: flex; gap: 7px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+    .cal-picker-label { font-size: 13px; color: var(--muted); font-weight: 600; }
+    .cal-chip { display: inline-flex; align-items: center; gap: 5px; padding: 5px 13px; border-radius: 20px; font-size: 13px; font-weight: 500; cursor: pointer; border: 1.5px solid var(--border); background: var(--bg); color: var(--text); transition: all .12s; user-select: none; }
+    .cal-chip input { display: none; }
+    .cal-chip.checked { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .cal-chip:hover { border-color: var(--accent); }
+
+    /* ── Event cards ── */
+    .event-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 10px; transition: opacity .2s, border-color .2s, box-shadow .2s; box-shadow: var(--shadow); }
+    .event-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,.1); }
+    .event-card.added   { border-color: var(--green); opacity: .55; }
+    .event-card.skipped { opacity: .3; }
+    .event-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+    .event-title { font-size: 15px; font-weight: 600; line-height: 1.3; }
+    .badges { display: flex; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+    .badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; text-transform: uppercase; letter-spacing: .05em; }
+    .b-email    { background: #e8f0fe; color: #1967d2; }
+    .b-imessage { background: #e6f4ea; color: #137333; }
+    .b-high     { background: #e6f4ea; color: #137333; }
+    .b-medium   { background: #fef7e0; color: #8a5c00; }
+    .b-low      { background: #fce8e6; color: #c5221f; }
+    [data-theme="dark"] .b-email    { background: #1a2a4a; color: #7aadff; }
+    [data-theme="dark"] .b-imessage { background: #1a3a2a; color: #6dd98a; }
+    [data-theme="dark"] .b-high     { background: #1a3a2a; color: #6dd98a; }
+    [data-theme="dark"] .b-medium   { background: #3a2a0a; color: #ffd860; }
+    [data-theme="dark"] .b-low      { background: #3a1a1a; color: #ff7b72; }
+    .event-meta { display: flex; gap: 14px; font-size: 13px; color: var(--muted); margin-bottom: 9px; flex-wrap: wrap; }
+    .event-quote { font-size: 12px; color: var(--muted); background: var(--bg); padding: 8px 12px; border-radius: 8px; border-left: 3px solid var(--accent); margin-bottom: 11px; font-style: italic; line-height: 1.5; }
+    .event-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+    /* ── Messages ── */
+    .msg-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 14px 16px; margin-bottom: 8px; box-shadow: var(--shadow); }
+    .msg-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 10px; flex-wrap: wrap; }
+    .msg-from { font-size: 13px; font-weight: 600; }
+    .msg-date { font-size: 12px; color: var(--muted); }
+    .msg-subject { font-size: 12px; color: var(--muted); margin-bottom: 5px; font-style: italic; }
+    .msg-body { font-size: 13px; color: var(--text); line-height: 1.5; white-space: pre-wrap; word-break: break-word; max-height: 80px; overflow: hidden; position: relative; }
+    .msg-body.expanded { max-height: none; }
+    .msg-body:not(.expanded)::after { content:''; position:absolute; bottom:0; left:0; right:0; height:30px; background: linear-gradient(transparent, var(--card)); }
+    .msg-footer { display: flex; align-items: center; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+
+    /* ── History ── */
+    .history-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--r); padding: 13px 16px; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; box-shadow: var(--shadow); }
+    .history-title { font-size: 14px; font-weight: 600; }
+    .history-meta { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .history-added { font-size: 11px; color: var(--muted); text-align: right; }
+
+    /* ── Section headers ── */
+    .section-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+    .section-head h2 { font-size: 17px; font-weight: 700; }
+    .count { background: var(--accent); color: #fff; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 20px; margin-left: 6px; vertical-align: middle; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; gap: 4px; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 16px; }
+    .tab { flex: 1; padding: 8px; border-radius: 8px; border: none; background: none; font-size: 14px; font-weight: 500; cursor: pointer; color: var(--muted); transition: all .15s; font-family: inherit; text-align: center; }
+    .tab.active { background: var(--card); color: var(--text); box-shadow: 0 1px 4px rgba(0,0,0,.1); }
+
+    /* ── Alerts ── */
+    .alert { padding: 11px 15px; border-radius: 10px; font-size: 13px; margin-bottom: 12px; }
+    .alert-warn    { background: #fef7e0; color: #8a5c00; border: 1px solid #fdd663; }
+    .alert-error   { background: #fce8e6; color: #c5221f; border: 1px solid #f28b82; }
+    .alert-success { background: #e6f4ea; color: #137333; border: 1px solid #81c995; }
+    [data-theme="dark"] .alert-warn    { background: #3a2a0a; color: #ffd860; border-color: #6a4a0a; }
+    [data-theme="dark"] .alert-error   { background: #3a1a1a; color: #ff7b72; border-color: #6a1a1a; }
+    [data-theme="dark"] .alert-success { background: #1a3a2a; color: #6dd98a; border-color: #1a6a3a; }
+
+    .empty { text-align: center; padding: 48px 24px; color: var(--muted); }
+    .empty .icon { font-size: 48px; margin-bottom: 12px; }
+    .empty h3 { font-size: 17px; font-weight: 600; color: var(--text); margin-bottom: 6px; }
+
+    /* ── Modal ── */
+    .modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 300; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+    .modal-backdrop.open { display: flex; }
+    .modal { background: var(--card); border-radius: 18px; padding: 26px; width: 100%; max-width: 500px; margin: 16px; box-shadow: 0 24px 80px rgba(0,0,0,.25); border: 1px solid var(--border); }
+    .modal h3 { font-size: 18px; font-weight: 700; margin-bottom: 18px; }
+    .form-group { margin-bottom: 13px; }
+    .form-group label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 5px; }
+    .form-group input, .form-group textarea, .form-group select {
+      width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--border);
+      font-size: 14px; color: var(--text); background: var(--bg); outline: none;
+      font-family: inherit; transition: border .15s;
+    }
+    .form-group input:focus, .form-group textarea:focus, .form-group select:focus { border-color: var(--accent); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 20px; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; right: 18px; z-index: 400; min-width: 220px; max-width: 320px; animation: slide-up .25s ease; border-radius: 12px; }
+    @keyframes slide-up { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* ── Spinner ── */
+    .spinner { display: inline-block; width: 13px; height: 13px; border: 2px solid rgba(255,255,255,.35); border-top-color: #fff; border-radius: 50%; animation: spin .75s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Responsive ── */
+    @media (max-width: 600px) {
+      .main { padding: 12px 10px 40px; }
+      .form-row { grid-template-columns: 1fr; }
+      .scan-row { flex-direction: column; align-items: stretch; }
+      .scan-row select, .scan-row .btn { width: 100%; justify-content: center; }
+      .section-head { flex-direction: column; align-items: flex-start; }
+      header h1 { font-size: 16px; }
+      .modal { margin: 10px; padding: 18px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="header-left">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="8" fill="var(--accent)"/>
+      <rect x="6" y="6" width="7" height="7" rx="2.5" fill="white" opacity=".95"/>
+      <rect x="15" y="6" width="7" height="7" rx="2.5" fill="white" opacity=".95"/>
+      <rect x="6" y="15" width="7" height="7" rx="2.5" fill="white" opacity=".95"/>
+      <rect x="15" y="15" width="7" height="7" rx="2.5" fill="white" opacity=".6"/>
+    </svg>
+    <h1>AutoCal</h1>
+  </div>
+  <div class="header-right">
+    <button class="icon-btn" onclick="toggleTheme()" title="Toggle dark mode" id="theme-btn">🌙</button>
+    <button class="icon-btn" onclick="requestNotifPermission()" title="Enable notifications" id="notif-btn">🔔</button>
+  </div>
+</header>
+
+<div class="main">
+  <div id="top-alerts"></div>
+
+  <!-- Status -->
+  <div class="card">
+    <div class="card-title">Connection Status</div>
+    <div class="status-grid">
+      <div class="status-item">
+        <div class="dot dot-yellow" id="dot-gmail"></div>
+        <div>
+          <div class="status-label">Gmail</div>
+          <div class="status-sub" id="lbl-gmail">Checking…</div>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="dot dot-yellow" id="dot-im"></div>
+        <div>
+          <div class="status-label">iMessage</div>
+          <div class="status-sub" id="lbl-im">Checking…</div>
+        </div>
+      </div>
+      <div class="status-item">
+        <div class="dot dot-yellow" id="dot-ai"></div>
+        <div>
+          <div class="status-label">Claude AI</div>
+          <div class="status-sub" id="lbl-ai">Checking…</div>
+        </div>
+      </div>
+    </div>
+    <div id="gmail-btn-row" style="margin-top:12px;display:none;">
+      <a href="/auth/gmail" class="btn btn-primary">Connect Gmail</a>
+    </div>
+  </div>
+
+  <!-- Scan -->
+  <div class="card">
+    <div class="card-title">Scan Messages</div>
+    <div class="scan-row">
+      <select id="sel-hours">
+        <option value="6">Last 6 hours</option>
+        <option value="24" selected>Last 24 hours</option>
+        <option value="48">Last 2 days</option>
+        <option value="168">Last 7 days</option>
+      </select>
+      <button class="btn btn-primary" id="scan-btn" onclick="startScan()">
+        🔍 Scan Now
+      </button>
+    </div>
+
+    <!-- Auto scan -->
+    <div class="autoscan-row">
+      <div class="toggle-wrap">
+        <label class="toggle">
+          <input type="checkbox" id="autoscan-toggle" onchange="toggleAutoScan()">
+          <span class="toggle-slider"></span>
+        </label>
+        <span class="toggle-label">Auto Scan</span>
+      </div>
+      <select id="autoscan-interval" style="padding:6px 10px;font-size:13px;">
+        <option value="30">Every 30 min</option>
+        <option value="60" selected>Every hour</option>
+        <option value="120">Every 2 hours</option>
+        <option value="360">Every 6 hours</option>
+      </select>
+      <span class="autoscan-status" id="autoscan-status"></span>
+    </div>
+
+    <!-- Calendar picker -->
+    <div class="cal-picker" id="cal-picker">
+      <span class="cal-picker-label">Add to:</span>
+      <span style="font-size:13px;color:var(--muted)">Loading…</span>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs" id="main-tabs" style="display:none;">
+    <button class="tab active" onclick="switchTab('events')" id="tab-events">Events <span id="tab-ev-count"></span></button>
+    <button class="tab" onclick="switchTab('messages')" id="tab-messages">Messages <span id="tab-msg-count"></span></button>
+    <button class="tab" onclick="switchTab('history')" id="tab-history">History</button>
+  </div>
+
+  <!-- Events tab -->
+  <div id="pane-events" style="display:none;">
+    <div class="section-head">
+      <h2>Found Events</h2>
+      <button class="btn btn-secondary btn-sm" onclick="addAll()">Add All High/Medium</button>
+    </div>
+    <div id="err-container"></div>
+    <div id="ev-container"></div>
+  </div>
+
+  <!-- Messages tab -->
+  <div id="pane-messages" style="display:none;">
+    <div class="section-head">
+      <h2>All Scanned Messages</h2>
+    </div>
+    <div id="msg-container"></div>
+  </div>
+
+  <!-- History tab -->
+  <div id="pane-history" style="display:none;">
+    <div class="section-head">
+      <h2>Event History</h2>
+      <button class="btn btn-secondary btn-sm" onclick="loadHistory()">Refresh</button>
+    </div>
+    <div id="history-container"></div>
+  </div>
+</div>
+
+<!-- Edit/Create Event Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+  <div class="modal">
+    <h3 id="modal-title">✏️ Edit Event</h3>
+    <div class="form-group">
+      <label>Title</label>
+      <input type="text" id="m-title" placeholder="Event title">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Date</label>
+        <input type="date" id="m-date">
+      </div>
+      <div class="form-group">
+        <label>Duration (mins)</label>
+        <input type="number" id="m-duration" value="60" min="5">
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Start Time</label>
+        <input type="time" id="m-start">
+      </div>
+      <div class="form-group">
+        <label>End Time</label>
+        <input type="time" id="m-end">
+      </div>
+    </div>
+    <div class="form-group">
+      <label>Location</label>
+      <input type="text" id="m-location" placeholder="Optional">
+    </div>
+    <div class="form-group">
+      <label>Description</label>
+      <textarea id="m-description" rows="3" placeholder="Optional"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-add-btn" onclick="submitModal()">Add to Calendar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── State ──
+let allEvents = [], allMessages = [], autoScanTimer = null, currentModalMsg = null;
+
+// ── Theme ──
+function toggleTheme() {
+  const html = document.documentElement;
+  const isDark = html.dataset.theme === 'dark';
+  html.dataset.theme = isDark ? 'light' : 'dark';
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+  localStorage.setItem('theme', html.dataset.theme);
+}
+(function() {
+  const saved = localStorage.getItem('theme') || 'light';
+  document.documentElement.dataset.theme = saved;
+  document.getElementById('theme-btn').textContent = saved === 'dark' ? '☀️' : '🌙';
+})();
+
+// ── Notifications ──
+async function requestNotifPermission() {
+  if (!('Notification' in window)) { showToast('Notifications not supported', 'warn'); return; }
+  const perm = await Notification.requestPermission();
+  if (perm === 'granted') {
+    showToast('Notifications enabled! ✓', 'success');
+    document.getElementById('notif-btn').textContent = '🔔';
+  } else {
+    showToast('Notifications blocked', 'warn');
+  }
+}
+function sendNotif(title, body) {
+  if (Notification.permission === 'granted') {
+    new Notification('AutoCal — ' + title, { body, icon: '/favicon.ico' });
+  }
+}
+
+// ── Auto Scan ──
+function toggleAutoScan() {
+  const on = document.getElementById('autoscan-toggle').checked;
+  if (on) {
+    scheduleAutoScan();
+    showToast('Auto scan enabled ✓', 'success');
+  } else {
+    clearTimeout(autoScanTimer);
+    autoScanTimer = null;
+    document.getElementById('autoscan-status').textContent = '';
+    showToast('Auto scan disabled', 'warn');
+  }
+}
+function scheduleAutoScan() {
+  const mins = parseInt(document.getElementById('autoscan-interval').value);
+  const ms = mins * 60 * 1000;
+  const next = new Date(Date.now() + ms).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('autoscan-status').textContent = `Next scan at ${next}`;
+  autoScanTimer = setTimeout(async () => {
+    if (document.getElementById('autoscan-toggle').checked) {
+      await startScan(true);
+      scheduleAutoScan();
+    }
+  }, ms);
+}
+
+// ── Status ──
+async function loadStatus() {
+  try {
+    const d = await fetch('/status').then(r => r.json());
+    setDot('gmail', d.gmail_connected ? 'green' : 'red');
+    document.getElementById('lbl-gmail').textContent = d.gmail_connected ? 'Connected' : !d.gmail_credentials_exist ? 'credentials.json needed' : 'Not connected';
+    if (!d.gmail_credentials_exist) showAlert('top-alerts', 'warn', 'Add <strong>gmail_credentials.json</strong> to the app folder.');
+    else if (!d.gmail_connected) document.getElementById('gmail-btn-row').style.display = 'block';
+
+    setDot('im', d.imessage_available ? 'green' : 'red');
+    document.getElementById('lbl-im').textContent = d.imessage_available ? 'Available' : 'Full Disk Access needed';
+
+    setDot('ai', d.anthropic_key_set ? 'green' : 'red');
+    document.getElementById('lbl-ai').textContent = d.anthropic_key_set ? 'API key set' : 'ANTHROPIC_API_KEY missing';
+    if (!d.anthropic_key_set) showAlert('top-alerts', 'warn', 'Set <strong>ANTHROPIC_API_KEY</strong> in your .env file.');
+
+    const picker = document.getElementById('cal-picker');
+    picker.innerHTML = '<span class="cal-picker-label">Add to:</span>';
+    (d.calendars || ['Home']).forEach((c, idx) => {
+      const chip = document.createElement('label');
+      chip.className = 'cal-chip' + (idx === 0 ? ' checked' : '');
+      chip.dataset.cal = c;
+      chip.innerHTML = `<input type="checkbox" ${idx === 0 ? 'checked' : ''}>${esc(c)}`;
+      chip.onclick = () => { chip.classList.toggle('checked'); chip.querySelector('input').checked = chip.classList.contains('checked'); };
+      picker.appendChild(chip);
+    });
+  } catch(e) { console.error('Status error', e); }
+}
+
+function setDot(id, color) {
+  document.getElementById('dot-' + id).className = 'dot dot-' + color;
+}
+
+// ── Scan ──
+async function startScan(silent = false) {
+  const btn = document.getElementById('scan-btn');
+  const hours = parseInt(document.getElementById('sel-hours').value);
+  if (!silent) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Scanning…'; }
+
+  try {
+    const d = await fetch('/scan', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ hours })
+    }).then(r => r.json());
+
+    allEvents = d.events || [];
+    allMessages = d.messages || [];
+
+    document.getElementById('main-tabs').style.display = 'flex';
+    renderEvents(allEvents, d.messages_scanned || 0, d.errors || []);
+    renderMessages(allMessages);
+
+    if (allEvents.length > 0) {
+      sendNotif(`${allEvents.length} event${allEvents.length > 1 ? 's' : ''} found`, allEvents.map(e => e.title).join(', '));
+      if (silent) showToast(`Auto scan: ${allEvents.length} new event${allEvents.length > 1 ? 's' : ''} found!`, 'success');
+    }
+  } catch(e) {
+    if (!silent) alert('Scan failed: ' + e.message);
+  } finally {
+    if (!silent) { btn.disabled = false; btn.innerHTML = '🔍 Scan Now'; }
+  }
+}
+
+// ── Tabs ──
+function switchTab(name) {
+  ['events','messages','history'].forEach(t => {
+    document.getElementById('pane-' + t).style.display = t === name ? 'block' : 'none';
+    document.getElementById('tab-' + t).classList.toggle('active', t === name);
+  });
+  if (name === 'history') loadHistory();
+}
+
+// ── Render Events ──
+function renderEvents(events, scanned, errors) {
+  document.getElementById('pane-events').style.display = 'block';
+  const tabCount = document.getElementById('tab-ev-count');
+  tabCount.innerHTML = events.length ? `<span class="count">${events.length}</span>` : '';
+
+  const errEl = document.getElementById('err-container');
+  errEl.innerHTML = '';
+  errors.forEach(e => { const d = document.createElement('div'); d.className = 'alert alert-warn'; d.textContent = e; errEl.appendChild(d); });
+
+  const cont = document.getElementById('ev-container');
+  cont.innerHTML = '';
+  if (!events.length) {
+    cont.innerHTML = `<div class="empty"><div class="icon">📅</div><h3>No events found</h3><p>Scanned ${scanned} message${scanned !== 1 ? 's' : ''} — no dates or times detected.</p></div>`;
+    return;
+  }
+  events.forEach((ev, i) => cont.appendChild(makeEventCard(ev, i)));
+}
+
+function makeEventCard(ev, i) {
+  const card = document.createElement('div');
+  card.className = 'event-card'; card.id = 'ec-' + i;
+  const src = ev.source === 'email' ? 'b-email' : 'b-imessage';
+  const srcLbl = ev.source === 'email' ? 'Email' : 'iMessage';
+  const conf = ev.confidence || 'medium';
+  card.innerHTML = `
+    <div class="event-head">
+      <div class="event-title">${esc(ev.title)}</div>
+      <div class="badges"><span class="badge ${src}">${srcLbl}</span><span class="badge b-${conf}">${conf}</span></div>
+    </div>
+    <div class="event-meta">
+      <span>📅 ${fmtDate(ev)}</span>
+      ${ev.location ? `<span>📍 ${esc(ev.location)}</span>` : ''}
+      ${ev.description ? `<span>📝 ${esc(ev.description)}</span>` : ''}
+    </div>
+    ${ev.original_text ? `<div class="event-quote">"${esc(ev.original_text)}"</div>` : ''}
+    <div class="event-actions" id="ea-${i}">
+      <button class="btn btn-green btn-sm" onclick="addEvent(${i})">➕ Add to Calendar</button>
+      <button class="btn btn-secondary btn-sm" onclick="openEditModal(${i})">✏️ Edit</button>
+      <button class="btn btn-ghost btn-sm" onclick="skipEvent(${i})">Skip</button>
+    </div>`;
+  return card;
+}
+
+// ── Render Messages ──
+function renderMessages(messages) {
+  const tabCount = document.getElementById('tab-msg-count');
+  tabCount.innerHTML = messages.length ? `<span class="count">${messages.length}</span>` : '';
+  const cont = document.getElementById('msg-container');
+  cont.innerHTML = '';
+  if (!messages.length) { cont.innerHTML = '<div class="empty"><div class="icon">💬</div><h3>No messages</h3></div>'; return; }
+  messages.forEach((msg, i) => {
+    const card = document.createElement('div');
+    card.className = 'msg-card'; card.id = 'mc-' + i;
+    const srcBadge = msg.source === 'email' ? '<span class="badge b-email">Email</span>' : '<span class="badge b-imessage">iMessage</span>';
+    card.innerHTML = `
+      <div class="msg-header">
+        <div class="msg-from">${esc(msg.from || 'Unknown')}</div>
+        <div style="display:flex;gap:6px;align-items:center;">${srcBadge}<span class="msg-date">${esc(msg.date || '')}</span></div>
+      </div>
+      ${msg.subject ? `<div class="msg-subject">📧 ${esc(msg.subject)}</div>` : ''}
+      <div class="msg-body" id="mb-${i}">${esc(msg.body || '')}</div>
+      <div class="msg-footer">
+        <button class="btn btn-secondary btn-sm" onclick="toggleBody(${i})">Show more</button>
+        <button class="btn btn-primary btn-sm" onclick="createEventFromMessage(${i})">➕ Create Event</button>
+      </div>`;
+    cont.appendChild(card);
+  });
+}
+
+function toggleBody(i) {
+  const body = document.getElementById('mb-' + i);
+  const btn = body.nextElementSibling.querySelector('button');
+  body.classList.toggle('expanded');
+  btn.textContent = body.classList.contains('expanded') ? 'Show less' : 'Show more';
+}
+
+// ── History ──
+async function loadHistory() {
+  const cont = document.getElementById('history-container');
+  cont.innerHTML = '<div class="empty"><div class="icon">⏳</div><h3>Loading…</h3></div>';
+  try {
+    const history = await fetch('/history').then(r => r.json());
+    cont.innerHTML = '';
+    if (!history.length) {
+      cont.innerHTML = '<div class="empty"><div class="icon">📋</div><h3>No history yet</h3><p>Events you add will appear here.</p></div>';
+      return;
+    }
+    history.forEach(h => {
+      const card = document.createElement('div');
+      card.className = 'history-card';
+      card.innerHTML = `
+        <div>
+          <div class="history-title">${esc(h.title)}</div>
+          <div class="history-meta">📅 ${esc(h.date)}${h.start_time ? ' at ' + fmt12(h.start_time) : ''}${h.location ? ' · 📍 ' + esc(h.location) : ''} · 📆 ${esc(h.calendar)}</div>
+        </div>
+        <div class="history-added">Added<br>${esc(h.added_at || '')}</div>`;
+      cont.appendChild(card);
+    });
+  } catch(e) { cont.innerHTML = '<div class="alert alert-error">Failed to load history</div>'; }
+}
+
+// ── Add / Skip Events ──
+function getSelectedCals() {
+  return Array.from(document.querySelectorAll('.cal-chip.checked')).map(el => el.dataset.cal).filter(Boolean);
+}
+
+async function addEvent(i) {
+  const ev = allEvents[i];
+  const actEl = document.getElementById('ea-' + i);
+  const btn = actEl.querySelector('.btn-green');
+  const cals = getSelectedCals();
+  if (!cals.length) { showToast('Select at least one calendar above.', 'warn'); return; }
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>';
+  try {
+    const results = await Promise.all(cals.map(cal =>
+      fetch('/add-event', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...ev, calendar: cal}) }).then(r => r.json())
+    ));
+    if (results.some(r => r.success)) {
+      document.getElementById('ec-' + i).classList.add('added');
+      actEl.innerHTML = `<span style="color:var(--green);font-weight:600;font-size:13px">✓ Added to ${esc(cals.join(', '))}</span>`;
+      showToast(`"${ev.title}" added! ✓`, 'success');
+    } else { btn.disabled = false; btn.textContent = 'Retry'; showToast('Failed — is Calendar.app running?', 'error'); }
+  } catch { btn.disabled = false; btn.textContent = 'Retry'; }
+}
+
+function skipEvent(i) {
+  document.getElementById('ec-' + i).classList.add('skipped');
+  document.getElementById('ea-' + i).innerHTML = '<span style="color:var(--muted);font-size:13px">Skipped</span>';
+}
+
+async function addAll() {
+  for (let i = 0; i < allEvents.length; i++) {
+    const c = allEvents[i].confidence;
+    if ((c === 'high' || c === 'medium') && !document.getElementById('ec-' + i)?.classList.contains('added')) {
+      await addEvent(i);
+      await new Promise(r => setTimeout(r, 400));
+    }
+  }
+}
+
+// ── Edit Modal (from event card) ──
+function openEditModal(i) {
+  const ev = allEvents[i];
+  currentModalMsg = null;
+  document.getElementById('modal-title').textContent = '✏️ Edit Event';
+  document.getElementById('m-title').value = ev.title || '';
+  document.getElementById('m-date').value = ev.date || '';
+  document.getElementById('m-start').value = ev.start_time || '';
+  document.getElementById('m-end').value = ev.end_time || '';
+  document.getElementById('m-duration').value = ev.duration_minutes || 60;
+  document.getElementById('m-location').value = ev.location || '';
+  document.getElementById('m-description').value = ev.description || '';
+  document.getElementById('modal-add-btn').onclick = async () => {
+    await submitModalAndUpdateEvent(i);
+  };
+  document.getElementById('modal-backdrop').classList.add('open');
+}
+
+async function submitModalAndUpdateEvent(i) {
+  const ev = {
+    title: document.getElementById('m-title').value || 'Untitled Event',
+    date: document.getElementById('m-date').value,
+    start_time: document.getElementById('m-start').value || null,
+    end_time: document.getElementById('m-end').value || null,
+    duration_minutes: parseInt(document.getElementById('m-duration').value) || 60,
+    location: document.getElementById('m-location').value || null,
+    description: document.getElementById('m-description').value || null,
+    source: allEvents[i]?.source || 'email',
+    confidence: allEvents[i]?.confidence || 'high',
+  };
+  allEvents[i] = ev;
+  closeModal();
+  await addEvent(i);
+}
+
+// ── Create Event from Message ──
+async function createEventFromMessage(i) {
+  const msg = allMessages[i];
+  const footer = document.querySelector(`#mc-${i} .msg-footer`);
+  const btn = footer.querySelector('.btn-primary');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Analyzing…';
+  try {
+    const d = await fetch('/parse-message', {
+      method: 'POST', headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({ source: msg.source, from_: msg.from, subject: msg.subject || '', body: msg.body, date: msg.date || '' })
+    }).then(r => r.json());
+    const ev = d.event || {};
+    document.getElementById('modal-title').textContent = '➕ Create Event';
+    document.getElementById('m-title').value = ev.title || '';
+    document.getElementById('m-date').value = ev.date || new Date().toISOString().split('T')[0];
+    document.getElementById('m-start').value = ev.start_time || '';
+    document.getElementById('m-end').value = ev.end_time || '';
+    document.getElementById('m-duration').value = ev.duration_minutes || 60;
+    document.getElementById('m-location').value = ev.location || '';
+    document.getElementById('m-description').value = ev.description || '';
+    document.getElementById('modal-add-btn').onclick = submitModal;
+    document.getElementById('modal-backdrop').classList.add('open');
+  } catch(e) { showToast('Failed to analyze message', 'error'); }
+  finally { btn.disabled = false; btn.textContent = '➕ Create Event'; }
+}
+
+function closeModal() { document.getElementById('modal-backdrop').classList.remove('open'); }
+
+async function submitModal() {
+  const cals = getSelectedCals();
+  if (!cals.length) { showToast('Select at least one calendar above.', 'warn'); return; }
+  const btn = document.getElementById('modal-add-btn');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> Adding…';
+  const event = {
+    title: document.getElementById('m-title').value || 'Untitled Event',
+    date: document.getElementById('m-date').value,
+    start_time: document.getElementById('m-start').value || null,
+    end_time: document.getElementById('m-end').value || null,
+    duration_minutes: parseInt(document.getElementById('m-duration').value) || 60,
+    location: document.getElementById('m-location').value || null,
+    description: document.getElementById('m-description').value || null,
+  };
+  try {
+    await Promise.all(cals.map(cal => fetch('/add-event', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({...event, calendar: cal}) })));
+    showToast(`"${event.title}" added! ✓`, 'success');
+    closeModal();
+  } catch(e) { showToast('Failed to add event', 'error'); }
+  finally { btn.disabled = false; btn.textContent = 'Add to Calendar'; }
+}
+
+// ── Helpers ──
+function fmtDate(ev) {
+  if (!ev.date) return 'Unknown date';
+  let s = ev.date;
+  if (ev.start_time) { s += ' at ' + fmt12(ev.start_time); }
+  if (ev.end_time)   { s += ' – ' + fmt12(ev.end_time); }
+  return s;
+}
+function fmt12(t) {
+  if (!t) return '';
+  const [h, m] = t.split(':').map(Number);
+  return `${h % 12 || 12}:${String(m).padStart(2,'0')} ${h >= 12 ? 'PM' : 'AM'}`;
+}
+function showAlert(containerId, type, html) {
+  const el = document.getElementById(containerId);
+  const d = document.createElement('div'); d.className = 'alert alert-' + type; d.innerHTML = html;
+  el.appendChild(d);
+}
+function showToast(msg, type = 'warn') {
+  const t = document.createElement('div'); t.className = `toast alert alert-${type}`; t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 4000);
+}
+function esc(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──
+const params = new URLSearchParams(location.search);
+if (params.get('connected') === 'gmail') { history.replaceState({}, '', '/'); showToast('Gmail connected! ✓', 'success'); }
+loadStatus();
+</script>
+</body>
+</html>
