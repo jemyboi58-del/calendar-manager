@@ -52,6 +52,18 @@ Open http://localhost:8000 in your browser.
 
 ---
 
+## Security
+
+This project uses a `.gitignore` to prevent sensitive files from being committed to git:
+
+- `.env` — contains your Anthropic API key
+- `gmail_credentials.json` — contains your Google OAuth client secret
+- `gmail_token.json` — contains your Gmail access token
+
+**Never share or commit these files.** If you accidentally push them, rotate your keys immediately.
+
+---
+
 ## Troubleshooting
 
 **"gmail_credentials.json not found"** — follow step 3 above.
